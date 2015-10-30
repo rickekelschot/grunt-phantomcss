@@ -1,20 +1,20 @@
 /*
-* grunt-phantomcss
-* https://github.com/micahgodbolt/grunt-phantomcss
-*
-* Copyright (c) 2013 Chris Gladd
-* Copyright (c) since 2014 Anselm Hannemann
-* Copyright (c) since 2015 Micah Godbolt
-*
-* Licensed under the MIT license.
-*/
+ * grunt-phantomcss
+ * https://github.com/micahgodbolt/grunt-phantomcss
+ *
+ * Copyright (c) 2013 Chris Gladd
+ * Copyright (c) since 2014 Anselm Hannemann
+ * Copyright (c) since 2015 Micah Godbolt
+ *
+ * Licensed under the MIT license.
+ */
 
 'use-strict';
 
 // Get node fileSystem module and define the separator module
 var fs = require('fs');
 var s = fs.separator;
-var path =  require('path');
+var path = require('path');
 
 // Parse arguments passed in from the grunt task
 var args = JSON.parse(phantom.args[0]);
@@ -26,7 +26,7 @@ var viewportSize = {
 };
 
 // Messages are sent to the parent by appending them to the tempfile
-var sendMessage = function() {
+var sendMessage = function () {
   fs.write(args.tempFile, JSON.stringify(Array.prototype.slice.call(arguments)) + '\n', 'a');
 };
 
@@ -50,47 +50,56 @@ phantomcss.init({
   failedComparisonsRoot: args.failures,
   libraryRoot: phantomCSSPath, // Give absolute path, otherwise PhantomCSS fails
   mismatchTolerance: args.mismatchTolerance, // defaults to 0.05
+  prefixCount: true,
+  rebase: args.rebase,
 
-  onFail: function(test) {
+  onFail: function (test) {
     sendMessage('onFail', test);
   },
-  onPass: function(test) {
+
+  onPass: function (test) {
     sendMessage('onPass', test);
   },
-  onTimeout: function(test) {
+
+  onTimeout: function (test) {
     sendMessage('onTimeout', test);
   },
-  onComplete: function(allTests, noOfFails, noOfErrors) {
+
+  onNewImage: function (test) {
+    sendMessage('onNewImage', test);
+  },
+
+  onComplete: function (allTests, noOfFails, noOfErrors) {
     sendMessage('onComplete', allTests, noOfFails, noOfErrors);
   },
-  fileNameGetter: function(root, filename) {
-    var name = phantomcss.pathToTest + args.screenshots + '/' + filename;
+
+  fileNameGetter: function (root, filename) {
+    var name = path.join(args.screenshots + '/' + filename);
     if (fs.isFile(name + '.png')) {
       return name + '.diff.png';
     } else {
       return name + '.png';
     }
-  },
+  }
 });
 
 casper.start();
-// Run the test scenarios
-args.test.forEach(function(testSuite) {
-  phantom.casperTest = true;
-  phantom.rootUrl = args.rootUrl;
-  casper.then(function() {
-    phantomcss.pathToTest = path.dirname(testSuite) + '/';
-  });
-  require(testSuite);
-  casper.then(function() {
+phantom.casperTest = true;
+phantom.rootUrl = args.rootUrl;
+phantomcss.pathToTest = path.dirname(args.test) + '/';
+
+require(args.test);
+
+casper.
+  then(function () {
     phantomcss.compareSession();
-  })
-  .then(function() {
+  }).
+  then(function () {
     casper.test.done();
   });
-});
+
 
 // End tests
-casper.run(function() {
+casper.run(function () {
   phantom.exit();
 });
